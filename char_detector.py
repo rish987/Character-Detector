@@ -40,6 +40,9 @@ network
 from Tkinter import *
 import os
 
+from numpy import *
+from scipy.optimize import fmin_bfgs
+
 # window size (both width and height)
 WINDOW_WIDTH = 250;
 WINDOW_HEIGHT = 400;
@@ -80,12 +83,16 @@ nothing_entered = True;
 # to store the parameters for each char, as determined by logistic regression
 chars_params_log = {};
 
+# detected char label
+detected_char_label = 0;
+
 def main ():
     """
     Sets up the canvas for drawing and using this program.
     """
     global drawing_canvas;
     global drawing;
+    global detected_char_label;
 
     # set up the window with appropriate dimensions 
     window = Tk();
@@ -353,8 +360,19 @@ def train_log_button ():
     """
     global chars_params_log;
 
+    # don't train if nothing was entered
+    if nothing_entered:
+        return;
+
+    params = train_log_reg( char );
+
+    # there was an issue training the current character
+    if params == None:
+        # don't add any params to the params list
+        return;
+
     # train the current character drawn, and save this to the list
-    chars_params_log[ char ] = train_log_reg( char );
+    chars_params_log[ char ] = params;
 
 def detect_log_button ():
     """
@@ -362,8 +380,13 @@ def detect_log_button ():
     determined from previously performing logistic regression to detect the
     current character drawn.
     """
+    global detected_char_label;
+
     # detect the current character drawn
-    detect_log_reg( chars_params_log );
+    detected = detect_log_reg( chars_params_log );
+
+    # reset the label to display the detected char
+    detected_char_label.config( text=detected );
 
 def draw_at ( x_loc, y_loc ):
     """
@@ -453,10 +476,132 @@ def train_log_reg ( this_char ):
     # load the data
     chars_data = load_chars_data();
 
-    # TODO TODO composite the data into two matrices, one with inputs and one
-    # with output, for this charater
+    # the data does not contain this char
+    if not this_char in chars_data:
+        # nothing to train
+        return None;
 
-    # TODO TODO train this character
+    train_inps = [];
+    train_outps = [];
+
+    # --- format the data into matrix form ---
+
+    # go through all of the keys in the data
+    for key in chars_data:
+        # the output for this key
+        output = 0;
+        # this key is the character we are training
+        if key == this_char:
+            # the output for this key should be 1
+            output = 1;
+            
+        # go through all of the 
+        for input in chars_data[ key ]:
+            # set the input and output for this drawing
+            train_inps.append( input );
+            train_outps.append( output );
+
+    train_inps_mx = matrix( train_inps );
+    train_outps_mx = matrix( train_outps ).T;
+
+    # ---
+
+    # regularization parameter TODO find best value
+    reg = 1;
+
+    # number of features
+    num_features = train_inps_mx.shape[ 1 ];
+
+    # train this character and return the trained parameters
+    return fmin_bfgs( lambda x: get_reg_log_cost( x, train_inps_mx,
+        train_outps_mx, reg ), zeros( num_features + 1 ), 
+        fprime = lambda x: get_reg_log_grad( x, train_inps_mx, train_outps_mx, 
+        reg ) );
+
+def get_reg_log_cost ( params_in, train_set_inps, train_set_outps, \
+    reg_param ):
+    """
+    Returns the regularized logistic cost of a model, given the model's
+    parameters and the training set inputs and outputs.
+
+    Parameters:
+    params_in (row vector of real numbers) - parameters of model
+    train_set_inps_in ( matrix of real numbers ) - training set inputs, without
+        intercept ( bias ) term
+    train_set_outps_in ( vector of real numbers ) - training set outputs
+    reg_param ( positive real number ) - regularization parameter
+    """
+    # convert params to column vector
+    params = matrix( params_in ).T;
+
+    # number of training examples
+    m = float( len( train_set_inps ) );
+
+    # training set inputs with bias term
+    train_set_inps_adj = insert( train_set_inps, 0, 1, axis = 1 );
+
+    # get the predicted outputs
+    pred_outps = sigmoid( train_set_inps_adj * params );
+
+    # list of individual costs for each training example
+    costs = multiply( -train_set_outps, log( pred_outps ) ) - \
+        multiply( ( 1 - train_set_outps ), log( 1 + 1e-15 - pred_outps ) );
+
+    # cost, not including regularization
+    cost = ( 1 / m ) * sum( costs )
+    # cost, including regularization
+    cost += ( reg_param / ( 2 * m ) ) * sum( multiply( params[ 1: ], 
+        params[ 1: ] ) );
+
+    # return the cost
+    return cost;
+
+def sigmoid ( data ):
+    """
+    Returns a matrix containg the sigmoid of each element in a given matrix of
+    data.
+
+    Parameters:
+    data ( matrix of real numbers ) - the data to take the sigmoid of
+    """
+    # return the sigmoid of the data
+    return 1 / ( 1 + exp( -data ) )
+
+def get_reg_log_grad ( params_in, train_set_inps, train_set_outps, \
+    reg_param  ):
+    """
+    Returns the regularized logistic gradient for a given set of parameters
+    and training data.
+
+    Parameters:
+    params_in (row vector of real numbers) - parameters of model
+    train_set_inps( matrix of real numbers ) - training set inputs, without
+        intercept ( bias ) term
+    train_set_outps( vector of real numbers ) - training set outputs
+    reg_param ( positive real number ) - regularization parameter
+    """
+    # convert params to column vector
+    params = matrix( params_in ).T;
+
+    # size of training data
+    m = float( len( train_set_inps ) );
+
+    # training set inputs with bias terms
+    adj_train_set_inps = insert( train_set_inps, 0, 1, axis = 1 );
+    
+    #( adj_train_set_inps.T * diffs ) / m get the predicted outputs
+    pred_outps = sigmoid( adj_train_set_inps * params );
+
+    # the differences
+    diffs = pred_outps - train_set_outps;
+
+    # the gradients, without regularization
+    grads = ( adj_train_set_inps.T * diffs ) / m;
+    # the gradients, with regularization
+    grads[ 1: ] = grads[ 1: ] + ( reg_param / m ) * params[ 1: ];
+
+    # return the flattened gradients
+    return array( grads ).flatten();
 
 def load_chars_data ():
     """
@@ -477,7 +622,10 @@ def load_chars_data ():
 
     # the data files do not exist
     if not os.path.isdir( data_dir ):
-        return
+        return;
+
+    # dictionary to return
+    data_dict = {};
 
     # go through all of the subdirectories
     for subdir, dirs, files in os.walk( data_dir ):
@@ -489,9 +637,25 @@ def load_chars_data ():
                 data_file = open( subdir + '/' + file, 'r' );
                 data_file_content = data_file.readlines();
 
-                # TODO
+                # the character drawn in this file
+                this_char = data_file_content[ 0 ][ 0 ];
+
+                # to store this drawing
+                this_drawing = [];
+
+                # go through all of the characters in the second line
+                for drawing_char in data_file_content[ 1 ]:
+                    this_drawing.append( ord( drawing_char  )- ord( '0' ) );
+
+                # this key does not already exist in the dictonary
+                if not this_char in data_dict:
+                    # initialize this list
+                    data_dict[ this_char ] = [];
+
+                # add this data to the correct list
+                data_dict[ this_char ].append( this_drawing );
             
-    # TODO TODO load the characters
+    return data_dict;
 
 def detect_log_reg ( chars_params ):
     """
@@ -505,7 +669,54 @@ def detect_log_reg ( chars_params ):
     - the detected character
     """
     global drawing;
-    # TODO TODO detect the character
+
+    # probability of this drawing to be each of the characters trained so far
+    probs = {};
+
+    # --- flatten the drawing ---
+
+    flattened_drawing = [];
+    # go through all of the rows in the drawing
+    for row in range( 0, len( drawing ) ):
+        # go through all of the columns in this row of the drawing
+        for col in range( 0, len( drawing[ row ] ) ):
+            if drawing[ row ][ col ]:
+                flattened_drawing.append( 1 );
+            else:
+                flattened_drawing.append( 0 );
+
+    flattened_drawing_mx = insert( matrix( flattened_drawing ), 0, 1, 
+        axis = 1 );
+
+    # ---
+
+    # go through all of the trained characters
+    for key in chars_params:
+        # get the probability of this character
+        probs[ key ] = ( sigmoid( flattened_drawing_mx * matrix( 
+            chars_params[ key ] ).T ) ).item( ( 0, 0 ) );
+
+    # TODO
+    print probs;
+    # TODO
+
+    # maximum probability char so far
+    max_prob_char = -1;
+
+    # maximum probability 
+    max_prob = -1;
+
+    # go through all of the probabilites for each character
+    for key in probs:
+        # this key's probability
+        this_prob = probs[ key ];
+
+        # this character has a higher probability than those searched before
+        if this_prob > max_prob:
+            max_prob = this_prob;
+            max_prob_char = key;
+
+    return max_prob_char;
 
 # TODO TODO neural network stuff
 
