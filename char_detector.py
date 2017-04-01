@@ -6,9 +6,6 @@ Author: Rishikesh Vaishnav
 Created:
 24/03/2017
 
-Last Modified:
-Fri 31 Mar 2017 06:46:39 PM PDT
-
 Description:
 This program provides an easy-to-use environment where a user can draw a symbol
 that represents an ASCII character, enter what character they drew, and save
@@ -45,10 +42,10 @@ import os
 
 # window size (both width and height)
 WINDOW_WIDTH = 250;
-WINDOW_HEIGHT = 300;
+WINDOW_HEIGHT = 400;
 
 # padding of all components inside of window
-PADDING = 20
+PADDING = 5;
 
 # minimum and maximum drawing canvas sizes
 DC_MIN_SIZE = 10;
@@ -79,6 +76,9 @@ drawing = [ [ False for col in range( 0, DC_SIZE ) ]
 
 # was nothing entered in the text area for the entered character?
 nothing_entered = True;
+
+# to store the parameters for each char, as determined by logistic regression
+chars_params_log = {};
 
 def main ():
     """
@@ -132,7 +132,7 @@ def main ():
     char_field.pack( side=LEFT );
 
     # display the char panel
-    char_panel.pack();
+    char_panel.pack( padx=PADDING, pady=PADDING );
  
     # ---
 
@@ -150,15 +150,53 @@ def main ():
     clear_btn.pack( side=LEFT );
 
     # display the control panel
-    control_panel.pack();
+    control_panel.pack( padx=PADDING, pady=PADDING );
 
     # ---
 
-    # TODO add labels for detected character
+    # --- add buttons for training ---
 
-    # TODO add buttons for training
+    train_panel = Frame( window );
 
-    # TODO add buttons for detection
+    train_log_btn = Button( train_panel, text="Train - Logistic", 
+        command=train_log_button );
+    train_log_btn.pack( side=LEFT );
+
+    # TODO add button for neural network
+
+    train_panel.pack( padx=PADDING, pady=PADDING );
+
+    # ---
+
+    # --- add buttons for detection ---
+
+    detect_panel = Frame( window );
+
+    detect_log_btn = Button( detect_panel, text="Detect - Logistic", 
+        command=detect_log_button );
+    detect_log_btn.pack( side=LEFT );
+
+    # TODO add button for neural network
+
+    detect_panel.pack( padx=PADDING, pady=PADDING );
+
+    # ---
+
+    # --- add labels for detected character ---
+
+    detected_char_panel = Frame( window );
+
+    detected_char_info_label = Label( detected_char_panel, 
+        text="Detected Char: ", bg='white' );
+    detected_char_info_label.pack( side=LEFT );
+
+    detected_char_label = Label( detected_char_panel, 
+        text="N/A", bg='white' );
+    detected_char_label.pack( side=LEFT );
+
+    detected_char_panel.pack( padx=PADDING, pady=PADDING );
+
+    # ---
 
     # --- set up the necessary folders ---
 
@@ -308,6 +346,25 @@ def save_button ():
     data_file.close();
     # ---
 
+def train_log_button ():
+    """
+    Handles the user pressing the train logistic button by performing logistic
+    regression to train the current character drawn.
+    """
+    global chars_params_log;
+
+    # train the current character drawn, and save this to the list
+    chars_params_log[ char ] = train_log_reg( char );
+
+def detect_log_button ():
+    """
+    Handles the user pressing the detect logistic button by using parameters
+    determined from previously performing logistic regression to detect the
+    current character drawn.
+    """
+    # detect the current character drawn
+    detect_log_reg( chars_params_log );
+
 def draw_at ( x_loc, y_loc ):
     """
     Draws at the given x- and y-locations on the drawing canvas
@@ -390,8 +447,7 @@ def train_log_reg ( this_char ):
     this_char - char whose data will be used to train
 
     Returns:
-    - a char_params object containing the trained parameters for this
-    character
+    - a list containing the trained parameters for this character
     - -1 if this character does not have any data
     """
     # TODO TODO train this character
@@ -420,10 +476,12 @@ def detect_log_reg ( chars_params ):
 
     Parameters:
     chars_params - list of pre-trained parameters for use in detection
+
+    Returns:
+    - the detected character
     """
     global drawing;
-
-# TODO TODO make char_params class
+    # TODO TODO detect the character
 
 # TODO TODO neural network stuff
 
