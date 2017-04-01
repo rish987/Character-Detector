@@ -450,24 +450,48 @@ def train_log_reg ( this_char ):
     - a list containing the trained parameters for this character
     - -1 if this character does not have any data
     """
+    # load the data
+    chars_data = load_chars_data();
+
+    # TODO TODO composite the data into two matrices, one with inputs and one
+    # with output, for this charater
+
     # TODO TODO train this character
 
-def load_char_data ( this_char ):
+def load_chars_data ():
     """
-    Loads the data for the given character into a matrix containing the data 
-    for the character, and returns this matrix.
-
-    Parameters:
-    this_char - the character whose data is to be loaded
+    Loads the data for each character into a dictionary, where each key
+    contains a matrix containing the data for the character, and returns 
+    this dictionary.
 
     Returns:
-    - an mxn matrix containg the data for this character, where m is the number
-    of separate saved data files for this character, and n is the number of
-    bits in each data file. Each row contains the list of values of each bit in
-    the data file (True for 1 and False for 0).
+    - a dictionary where each key is a character and contains an mxn matrix
+    containing the data for this character, where m is the number of separate
+    saved data files for this character, and n is the number of bits in each
+    data file. Each row contains the list of values of each bit in the data
+    file (True for 1 and False for 0).
     - -1 if this character does not have any data
     """
-    # TODO TODO load this character
+    # directory in which to find data files
+    data_dir = 'char_data';
+
+    # the data files do not exist
+    if not os.path.isdir( data_dir ):
+        return
+
+    # go through all of the subdirectories
+    for subdir, dirs, files in os.walk( data_dir ):
+        # go through all of the files in this subdirectory
+        for file in files:
+            # this file is a data file
+            if file.endswith( '.dat' ):
+                # open the data file and get its content
+                data_file = open( subdir + '/' + file, 'r' );
+                data_file_content = data_file.readlines();
+
+                # TODO
+            
+    # TODO TODO load the characters
 
 def detect_log_reg ( chars_params ):
     """
