@@ -1,5 +1,5 @@
 """
-Filename: character_drawer.py
+Filename: char_detector.py
 
 Author: Rishikesh Vaishnav
 
@@ -7,12 +7,14 @@ Created:
 24/03/2017
 
 Last Modified:
-Thu 30 Mar 2017 07:49:21 PM PDT
+Fri 31 Mar 2017 06:46:39 PM PDT
 
 Description:
 This program provides an easy-to-use environment where a user can draw a symbol
 that represents an ASCII character, enter what character they drew, and save
 the data representing their drawing and the number it is associated with it.
+Additionaly, the user can use this data to train a logistic regression and
+neural network model that can detect the character that was drawn.
 
 These files will be saved in a folder in this program's directory called:
 char_data/[character drawn]_saved
@@ -34,6 +36,9 @@ The data file will contain the following:
 - On the following lines, the list of pixel values drawn on the screen, 
   represented as 0s (not drawn) and 1s (drawn), starting from the upper left
   corner and going from left to right and top to bottom.
+
+TODO TODO additional information relevant to logistic regression and neural 
+network
 """
 from Tkinter import *
 import os
@@ -84,7 +89,7 @@ def main ():
 
     # set up the window with appropriate dimensions 
     window = Tk();
-    window.wm_title( "Character Drawer" );
+    window.wm_title( "Character Detector" );
     window.resizable( width=False, height=False );
     window.geometry( '{}x{}'.format( WINDOW_WIDTH, WINDOW_HEIGHT ) );
     window.configure( background='white' );
@@ -148,6 +153,12 @@ def main ():
     control_panel.pack();
 
     # ---
+
+    # TODO add labels for detected character
+
+    # TODO add buttons for training
+
+    # TODO add buttons for detection
 
     # --- set up the necessary folders ---
 
@@ -293,7 +304,6 @@ def save_button ():
                 data_file.write( '1' )
             else:
                 data_file.write( '0' )
-        data_file.write( '\n' )
 
     data_file.close();
     # ---
@@ -370,6 +380,52 @@ def redraw_canvas ():
                     BIT_SIZE_PX * col + BIT_SIZE_PX,
                     BIT_SIZE_PX * row + BIT_SIZE_PX,
                     fill='black');
+
+def train_log_reg ( this_char ):
+    """
+    Performs regularized logistic regression to train and return a list of
+    parameters that can be used in character detection for the given character.
+
+    Parameters:
+    this_char - char whose data will be used to train
+
+    Returns:
+    - a char_params object containing the trained parameters for this
+    character
+    - -1 if this character does not have any data
+    """
+    # TODO TODO train this character
+
+def load_char_data ( this_char ):
+    """
+    Loads the data for the given character into a matrix containing the data 
+    for the character, and returns this matrix.
+
+    Parameters:
+    this_char - the character whose data is to be loaded
+
+    Returns:
+    - an mxn matrix containg the data for this character, where m is the number
+    of separate saved data files for this character, and n is the number of
+    bits in each data file. Each row contains the list of values of each bit in
+    the data file (True for 1 and False for 0).
+    - -1 if this character does not have any data
+    """
+    # TODO TODO load this character
+
+def detect_log_reg ( chars_params ):
+    """
+    Uses the given, pre-trained parameters to detect the current character
+    drawn.
+
+    Parameters:
+    chars_params - list of pre-trained parameters for use in detection
+    """
+    global drawing;
+
+# TODO TODO make char_params class
+
+# TODO TODO neural network stuff
 
 # start the program
 main();
