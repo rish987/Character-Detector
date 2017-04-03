@@ -1,4 +1,6 @@
-TODO implement logistic regression
+implement logistic regression
+implement loading parameters from file for log
+implement train all for log
 TODO implement neural networks
-TODO implement loading parameters from file
-TODO implement train all for log and neur
+TODO implement loading parameters from file for net
+TODO implement train all for net

@@ -44,7 +44,7 @@ from numpy import *
 from scipy.optimize import fmin_bfgs
 
 # window size (both width and height)
-WINDOW_WIDTH = 250;
+WINDOW_WIDTH = 300;
 WINDOW_HEIGHT = 400;
 
 # padding of all components inside of window
@@ -165,9 +165,13 @@ def main ():
 
     train_panel = Frame( window );
 
-    train_log_btn = Button( train_panel, text="Train - Logistic", 
+    train_log_btn = Button( train_panel, text="Train this Char - Logistic", 
         command=train_log_button );
     train_log_btn.pack( side=LEFT );
+
+    train_all_btn = Button( train_panel, text="Train All", 
+        command=train_all_button );
+    train_all_btn.pack( side=LEFT );
 
     # TODO add button for neural network
 
@@ -322,10 +326,42 @@ def save_button ():
 
     # ---
 
+    # --- indicate that the training data file for this char is not 
+    # up-to-date ---
+
+    # path to char saved folder
+    char_saved_path = 'char_data/' + char + '_saved';
+
+    training_data_file_name = char_saved_path + '/' + char \
+        + '_training_data_log.dat';
+
+    # to write to the new training data file
+    to_write = [ '0\n', '' ];
+
+    # this training data already exists
+    if os.path.exists( training_data_file_name ):
+        training_data_file = open( training_data_file_name, 'r' );
+
+        # read the lines in this file
+        to_write = training_data_file.readlines();
+
+        # change the first one to 0 to indicate that this data file is not
+        # up-to-date
+        to_write[ 0 ] = '0\n';
+
+
+    training_data_file = open( training_data_file_name, 'w' );
+
+    # write indicator to training file
+    training_data_file.write( to_write[ 0 ] );
+    training_data_file.write( to_write[ 1 ] );
+
+    # ---
+
     # number to use for this file
     this_num = 1;
 
-    # continue while both the data and image file for this number exist
+    # continue while the data file for this number exists
     while os.path.exists( this_data_path + '/' + str( this_num  )+ '_' + char 
     + '_' + 'data.dat' ):
         this_num = this_num + 1;
@@ -373,6 +409,32 @@ def train_log_button ():
 
     # train the current character drawn, and save this to the list
     chars_params_log[ char ] = params;
+
+def train_all_button ():
+    """
+    Handles the user pressing the train all button by performing logistic
+    regression to train all of the characters with saved data.
+    """
+    global chars_params_log;
+
+    # get a list of all the subdirectories
+    subdirs = [ x[ 0 ] for x in os.walk( 'char_data' ) ];
+
+    # to store all of the characters with saved data
+    chars = [];
+
+    # go through all subdirectories
+    for subdir in subdirs:
+        # this is a folder ending in '_saved'
+        if subdir.endswith( '_saved' ):
+            # add this char to the list
+            chars.append( subdir[ len( 'char_data/' ) ] );
+
+    # go through all of the characters with saved data
+    for this_char in chars:
+        # train this character
+        chars_params_log[ this_char ] = train_log_reg( this_char );
+        # TODO train all neural networks
 
 def detect_log_button ():
     """
@@ -473,6 +535,34 @@ def train_log_reg ( this_char ):
     - a list containing the trained parameters for this character
     - -1 if this character does not have any data
     """
+    # --- check if the parameters are already up-to-date ---
+
+    # path to char saved folder
+    char_saved_path = 'char_data/' + this_char + '_saved';
+
+    prev_training_data_file = char_saved_path + '/' + this_char \
+        + '_training_data_log.dat';
+
+    # this saved data exists
+    if os.path.exists( prev_training_data_file ):
+        training_data_file = open( prev_training_data_file, 'r' );
+
+        # read the lines in this file
+        read = training_data_file.readlines();
+
+        # the first line is a 1, so this data is already up-to-date
+        if read[ 0 ] == '1\n':
+            # convert the next line into a list of floats
+            params = [ float( x ) for x in read[ 1 ].split() ];
+            training_data_file.close();
+
+            # return this list of floats
+            return params;
+
+        training_data_file.close();
+
+    # ---
+
     # load the data
     chars_data = load_chars_data();
 
@@ -512,11 +602,34 @@ def train_log_reg ( this_char ):
     # number of features
     num_features = train_inps_mx.shape[ 1 ];
 
-    # train this character and return the trained parameters
-    return fmin_bfgs( lambda x: get_reg_log_cost( x, train_inps_mx,
+    # get the parameters
+    params = fmin_bfgs( lambda x: get_reg_log_cost( x, train_inps_mx,
         train_outps_mx, reg ), zeros( num_features + 1 ), 
         fprime = lambda x: get_reg_log_grad( x, train_inps_mx, train_outps_mx, 
         reg ) );
+
+    # --- save the data in a training data file ---
+
+    # path to char saved folder
+    char_saved_path = 'char_data/' + this_char + '_saved';
+
+    training_data_file = open( char_saved_path + '/' + this_char + 
+            '_training_data_log.dat', 
+        'w' );
+
+    # indicate that this training data file is up-to-date
+    training_data_file.write( '1\n' );
+
+    # go through all of the parameters
+    for param in params:
+        training_data_file.write( str( param ) + ' ' );
+
+    training_data_file.close();
+
+    # ---
+
+    # train this character and return the trained parameters
+    return params;
 
 def get_reg_log_cost ( params_in, train_set_inps, train_set_outps, \
     reg_param ):
@@ -632,7 +745,7 @@ def load_chars_data ():
         # go through all of the files in this subdirectory
         for file in files:
             # this file is a data file
-            if file.endswith( '.dat' ):
+            if file.endswith( 'data.dat' ) and subdir.endswith( '/data' ):
                 # open the data file and get its content
                 data_file = open( subdir + '/' + file, 'r' );
                 data_file_content = data_file.readlines();
